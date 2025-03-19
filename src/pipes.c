@@ -6,7 +6,7 @@
 /*   By: gahmed <gahmed@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/16 13:06:41 by gahmed            #+#    #+#             */
-/*   Updated: 2025/03/19 15:38:01 by gahmed           ###   ########.fr       */
+/*   Updated: 2025/03/19 16:15:37 by gahmed           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,70 @@
 //     }
 // }
 
+// void execute_redirection(char **tokens, t_shell *shell)
+// {
+//     int i = 0;
+//     char **cmd = calloc(1024, sizeof(char *));
+//     int cmd_index = 0;
+
+//     if (!cmd)
+//     {
+//         perror("malloc failed");
+//         exit(1);
+//     }
+//     for (int j = 0; tokens[j] != NULL; j++)
+//         printf("Token[%d]: %s\n", j, tokens[j]);
+
+//     while (tokens[i] != NULL)
+//     {
+//         if (tokens[i] && strcmp(tokens[i], "<") == 0)
+//         {
+//             if (tokens[i + 1] == NULL)
+//             {
+//                 fprintf(stderr, "minishell: syntax error: missing file for input redirection\n");
+//                 free(cmd);
+//                 exit(1);
+//             }
+//             handle_input_redirection(tokens, &i);
+//             i++;
+//         }
+//         else if (tokens[i] && (strcmp(tokens[i], ">") == 0 || strcmp(tokens[i], ">>") == 0))
+//         {
+//             if (tokens[i + 1] == NULL)
+//             {
+//                 fprintf(stderr, "minishell: syntax error: missing file for output redirection\n");
+//                 free(cmd);
+//                 exit(1);
+//             }
+//             handle_output_redirection(tokens, &i, strcmp(tokens[i], ">>") == 0);
+//             i++;
+//         }
+//         else if (tokens[i] && strcmp(tokens[i], "<<") == 0)
+//         {
+//             if (tokens[i + 1] == NULL)
+//             {
+//                 fprintf(stderr, "minishell: syntax error: missing delimiter for heredoc\n");
+//                 free(cmd);
+//                 exit(1);
+//             }
+//             handle_heredoc(tokens[i + 1]);
+//             i += 2;
+//         }
+//         else
+//         {
+//             cmd[cmd_index++] = strdup(tokens[i]);
+//             i++;
+//         }
+//     }
+//     cmd[cmd_index] = NULL;
+//     execvp(cmd[0], cmd);
+//     perror("execvp failed");
+//     for (int j = 0; j < cmd_index; j++)
+//         free(cmd[j]);
+//     free(cmd);
+//     exit(1);
+// }
+
 void execute_redirection(char **tokens, t_shell *shell)
 {
     int i = 0;
@@ -49,12 +113,23 @@ void execute_redirection(char **tokens, t_shell *shell)
         perror("malloc failed");
         exit(1);
     }
+
+    // Detect and handle pipes early
     for (int j = 0; tokens[j] != NULL; j++)
-        printf("Token[%d]: %s\n", j, tokens[j]);
+    {
+        if (strcmp(tokens[j], "|") == 0)
+        {
+            // Split into separate commands and execute pipes
+            tokens[j] = NULL;
+            execute_piped_commands(tokens, shell);
+            free(cmd);
+            return;
+        }
+    }
 
     while (tokens[i] != NULL)
     {
-        if (tokens[i] && strcmp(tokens[i], "<") == 0)
+        if (strcmp(tokens[i], "<") == 0)
         {
             if (tokens[i + 1] == NULL)
             {
@@ -65,7 +140,7 @@ void execute_redirection(char **tokens, t_shell *shell)
             handle_input_redirection(tokens, &i);
             i++;
         }
-        else if (tokens[i] && (strcmp(tokens[i], ">") == 0 || strcmp(tokens[i], ">>") == 0))
+        else if (strcmp(tokens[i], ">") == 0 || strcmp(tokens[i], ">>") == 0)
         {
             if (tokens[i + 1] == NULL)
             {
@@ -76,7 +151,7 @@ void execute_redirection(char **tokens, t_shell *shell)
             handle_output_redirection(tokens, &i, strcmp(tokens[i], ">>") == 0);
             i++;
         }
-        else if (tokens[i] && strcmp(tokens[i], "<<") == 0)
+        else if (strcmp(tokens[i], "<<") == 0)
         {
             if (tokens[i + 1] == NULL)
             {
@@ -93,6 +168,7 @@ void execute_redirection(char **tokens, t_shell *shell)
             i++;
         }
     }
+
     cmd[cmd_index] = NULL;
     execvp(cmd[0], cmd);
     perror("execvp failed");
@@ -101,6 +177,7 @@ void execute_redirection(char **tokens, t_shell *shell)
     free(cmd);
     exit(1);
 }
+
 
 void execute_piped_commands(char **commands, t_shell *shell)
 {
@@ -141,9 +218,8 @@ void execute_piped_commands(char **commands, t_shell *shell)
                 close(fd[0]);
                 close(fd[1]);
             }
-            execvp(tokens[0], tokens);
-            perror("execvp failed");
-            exit(1);
+            execute_redirection(tokens, shell);
+            exit(shell->last_exit_status);
         }
         else if (pid < 0)
         {
