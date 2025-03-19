@@ -6,7 +6,7 @@
 /*   By: gahmed <gahmed@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 12:45:20 by gahmed            #+#    #+#             */
-/*   Updated: 2025/03/19 12:20:53 by gahmed           ###   ########.fr       */
+/*   Updated: 2025/03/19 15:05:14 by gahmed           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,23 +86,27 @@ int handle_heredoc(char *delimiter)
     {
         line = readline("> ");
         if (!line || strcmp(line, delimiter) == 0)
+		{
+			free (line);
             break;
+		}
         write(fd, line, strlen(line));
         write(fd, "\n", 1);
         free(line);
     }
-    free(line);
     close(fd);
-
-    // Open heredoc file for reading
     fd = open("/tmp/minishell_heredoc", O_RDONLY);
     if (fd < 0)
     {
         perror("minishell: heredoc read failed");
         return -1;
     }
-
-    dup2(fd, STDIN_FILENO);
+    if (dup2(fd, STDIN_FILENO) < 0)
+    {
+        perror("minishell: dup2 failed");
+        close(fd);
+        return -1;
+    }
     close(fd);
     unlink("/tmp/minishell_heredoc"); // Remove temporary file
     return 0;

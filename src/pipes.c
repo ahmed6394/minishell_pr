@@ -6,7 +6,7 @@
 /*   By: gahmed <gahmed@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/16 13:06:41 by gahmed            #+#    #+#             */
-/*   Updated: 2025/03/19 12:46:38 by gahmed           ###   ########.fr       */
+/*   Updated: 2025/03/19 15:38:01 by gahmed           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,12 +49,10 @@ void execute_redirection(char **tokens, t_shell *shell)
         perror("malloc failed");
         exit(1);
     }
-
-    // Debugging: Print tokens
     for (int j = 0; tokens[j] != NULL; j++)
         printf("Token[%d]: %s\n", j, tokens[j]);
 
-    while (tokens[i] != NULL) // Ensure tokens[i] is non-NULL
+    while (tokens[i] != NULL)
     {
         if (tokens[i] && strcmp(tokens[i], "<") == 0)
         {
@@ -87,32 +85,22 @@ void execute_redirection(char **tokens, t_shell *shell)
                 exit(1);
             }
             handle_heredoc(tokens[i + 1]);
-            i++;
+            i += 2;
         }
         else
         {
-            cmd[cmd_index++] = strdup(tokens[i]); // Copy tokens[i]
+            cmd[cmd_index++] = strdup(tokens[i]);
             i++;
         }
     }
-
     cmd[cmd_index] = NULL;
-
-    // Debugging: Print parsed command
-    // for (int j = 0; cmd[j] != NULL; j++)
-    //     printf("CMD[%d]: %s\n", j, cmd[j]);
-
     execvp(cmd[0], cmd);
     perror("execvp failed");
-
-    // Free allocated memory before exiting
     for (int j = 0; j < cmd_index; j++)
         free(cmd[j]);
     free(cmd);
-
     exit(1);
 }
-
 
 void execute_piped_commands(char **commands, t_shell *shell)
 {
@@ -163,7 +151,6 @@ void execute_piped_commands(char **commands, t_shell *shell)
             shell->last_exit_status = 1;
             return;
         }
-        // Parent process
         if (input_fd != 0) 
             close(input_fd);
         if (commands[i + 1])
@@ -171,7 +158,6 @@ void execute_piped_commands(char **commands, t_shell *shell)
             close(fd[1]);
             input_fd = fd[0];
         }
-
         ft_free_tab(tokens);
         i++;
     }
