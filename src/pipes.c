@@ -6,7 +6,7 @@
 /*   By: gahmed <gahmed@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/16 13:06:41 by gahmed            #+#    #+#             */
-/*   Updated: 2025/03/19 16:15:37 by gahmed           ###   ########.fr       */
+/*   Updated: 2025/03/21 11:59:40 by gahmed           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -181,8 +181,9 @@ void execute_redirection(char **tokens, t_shell *shell)
 
 void execute_piped_commands(char **commands, t_shell *shell)
 {
-    int i = 0, fd[2], input_fd = 0;
+    int i = 0, fd[2], input_fd = 0, j = 0;
     pid_t pid;
+	int heredoc_fd = -1;
 
     while (commands[i])
     {
@@ -192,6 +193,18 @@ void execute_piped_commands(char **commands, t_shell *shell)
             ft_free_tab(tokens);
             i++;
             continue;
+        }
+
+		while (tokens[j] != NULL)
+        {
+            if (strcmp(tokens[j], "<<") == 0 && tokens[j + 1])
+            {
+                handle_heredoc(tokens[j + 1]); // Write input to a temp file
+                heredoc_fd = open("/tmp/minishell_heredoc", O_RDONLY); // Open for reading
+                tokens[j] = NULL; // Remove heredoc tokens
+                tokens[j + 1] = NULL;
+            }
+			j++;
         }
 
         if (commands[i + 1])
@@ -207,12 +220,19 @@ void execute_piped_commands(char **commands, t_shell *shell)
         pid = fork();
         if (pid == 0)
         {
-            if (input_fd != 0)
+            if (heredoc_fd != -1)
+            {
+                dup2(heredoc_fd, STDIN_FILENO);
+                close(heredoc_fd);
+                heredoc_fd = -1; // Reset heredoc fd
+            }
+            else if (input_fd != 0) // Normal input redirection
             {
                 dup2(input_fd, STDIN_FILENO);
                 close(input_fd);
             }
-            if (commands[i + 1])
+
+            if (commands[i + 1]) // If another command follows, redirect stdout to pipe
             {
                 dup2(fd[1], STDOUT_FILENO);
                 close(fd[0]);
